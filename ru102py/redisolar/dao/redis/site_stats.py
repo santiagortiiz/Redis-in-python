@@ -52,16 +52,27 @@ class SiteStatsDaoRedis(SiteStatsDaoBase, RedisDaoBase):
         max_capacity = self.redis.hget(key, SiteStats.MAX_CAPACITY)
         if not max_capacity or reading.current_capacity > float(max_capacity):
             self.redis.hset(key, SiteStats.MAX_CAPACITY, reading.wh_generated)
-
+    
+    # Challenge #3
     def _update_optimized(self, key: str, meter_reading: MeterReading,
-                          pipeline: redis.client.Pipeline = None) -> None:
+                        pipeline: redis.client.Pipeline = None) -> None:
         execute = False
         if pipeline is None:
             pipeline = self.redis.pipeline()
             execute = True
 
-        # START Challenge #3
-        # END Challenge #3
+        reporting_time = datetime.datetime.utcnow().isoformat()
+
+        pipeline.hset(key, SiteStats.LAST_REPORTING_TIME, reporting_time)
+        pipeline.hincrby(key, SiteStats.COUNT, 1)
+        pipeline.expire(key, WEEK_SECONDS)
+
+        self.compare_and_update_script.update_if_greater(
+        pipeline, key, SiteStats.MAX_WH, meter_reading.wh_generated)
+        self.compare_and_update_script.update_if_less(
+        pipeline, key, SiteStats.MIN_WH, meter_reading.wh_generated)
+        self.compare_and_update_script.update_if_greater(
+        pipeline, key, SiteStats.MAX_CAPACITY, meter_reading.current_capacity)
 
         if execute:
             pipeline.execute()
