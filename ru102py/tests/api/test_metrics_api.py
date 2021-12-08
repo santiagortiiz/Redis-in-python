@@ -46,7 +46,7 @@ def _check_measurements(measurements: List[Measurement], limit: int):
 
 # Callenge #2
 
-@pytest.mark.skip("Remove for challenge #2")
+# @pytest.mark.skip("Remove for challenge #2")
 def _test_insert_and_retrieve(client, readings: List[MeterReading],
                               metric_dao: MetricDaoRedis, limit: int):
     for reading in readings:
